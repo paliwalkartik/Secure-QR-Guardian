@@ -28,7 +28,7 @@ def test_call_llm_success(mock_groq_class):
     """Test LLM engine calls Groq SDK and parses JSON response."""
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.choices[0].message.content = '{"risk_score": 88, "threat_level": "HIGH", "reasoning_summary": "Test", "matched_archetype": "FRESH_PHISH"}'
+    mock_response.choices[0].message.content = '{"risk_score": 88, "threat_level": "HIGH", "reasoning_summary": "Domain registered recently with high threat signals.", "matched_archetype": "FRESH_PHISH"}'
     mock_client.chat.completions.create.return_value = mock_response
     mock_groq_class.return_value = mock_client
     

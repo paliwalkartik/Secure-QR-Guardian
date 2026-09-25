@@ -84,11 +84,11 @@ def test_all_scenarios_loadable():
 # ---------------------------------------------------------------------------
 
 def test_feature_extraction_from_all_scenarios():
-    """Verify extract_features produces an 8-element float array for every scenario."""
+    """Verify extract_features produces a 10-element float array for every scenario."""
     for meta in list_scenarios():
         scenario = load_scenario(meta["filename"])
         features = extract_features(scenario.mock_osint)
-        assert features.shape == (8,), f"{meta['id']}: expected 8 features, got {features.shape}"
+        assert features.shape == (10,), f"{meta['id']}: expected 10 features, got {features.shape}"
         assert features.dtype == float
 
 

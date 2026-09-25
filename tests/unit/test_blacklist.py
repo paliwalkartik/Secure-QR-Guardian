@@ -28,6 +28,8 @@ def mock_firebase():
     # Reset fake db before each test
     FAKE_DB["blacklist"].clear()
     FAKE_DB["reports"].clear()
+    from core.blacklist.consensus_engine import _REPORT_COOLDOWN
+    _REPORT_COOLDOWN.clear()
     
     with patch("core.blacklist.consensus_engine.check_blacklist", side_effect=fake_check_blacklist), \
          patch("core.blacklist.consensus_engine.get_report_count", side_effect=fake_get_report_count), \
@@ -61,6 +63,7 @@ def test_check_and_update_new_threat():
 
 def test_report_domain():
     """Test report_domain aggregates the report and triggers consensus."""
+    from core.blacklist.consensus_engine import _REPORT_COOLDOWN
     with patch("core.blacklist.consensus_engine.settings") as mock_settings:
         mock_settings.BLACKLIST_MIN_REPORTS = 2
         
@@ -68,6 +71,9 @@ def test_report_domain():
         res1 = report_domain("test.com")
         assert res1["report_count"] == 1
         assert res1["now_blacklisted"] is False
+        
+        # Reset cooldown to simulate report from another session or after cooldown
+        _REPORT_COOLDOWN.clear()
         
         # Report 2 (triggers consensus)
         res2 = report_domain("test.com")
