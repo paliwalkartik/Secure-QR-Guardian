@@ -1,0 +1,54 @@
+{
+  "id": "scn_004_redirect_chain",
+  "name": "Evasive Redirect Chain",
+  "description": "5 hops, final IP on bulletproof ASN, domain 2 years old, no typosquat",
+  "mock_payload": {
+    "raw_data": "https://t.co/redirect123",
+    "data_type": "URL"
+  },
+  "mock_osint": {
+    "url_trail": {
+      "hops": [
+        "https://t.co/redirect123",
+        "https://tinyurl.com/abc456",
+        "https://click-tracker.io/analytics?uuid=999",
+        "https://promo-offer-2026.net/jump",
+        "https://sketchy-payment-gateway.ru/pay"
+      ],
+      "final_url": "https://sketchy-payment-gateway.ru/pay",
+      "final_ip": "95.163.212.1"
+    },
+    "domain_forensics": {
+      "creation_date": "2024-05-10",
+      "registrar": "REGRU-RU",
+      "country": "RU",
+      "ssl_issued_on": "2025-11-10",
+      "ssl_issuer": "ZeroSSL",
+      "ssl_days_valid": 90
+    },
+    "ip_analysis": {
+      "country": "RU",
+      "city": "Moscow",
+      "org": "Bulletproof Cyber Hosting",
+      "asn": "AS49392",
+      "asn_name": "BULLETPROOF-ASN",
+      "is_known_bulletproof": true
+    },
+    "typosquat": {
+      "is_typosquat": false,
+      "closest_legit": null,
+      "distance": 0,
+      "match": null
+    },
+    "vpa": {
+      "claimed_name": "Merchant Payment",
+      "registered_name": "Ivan Ivanov",
+      "mismatch": true
+    },
+    "is_blacklisted": false
+  },
+  "expected_verdict": {
+    "threat_level": "HIGH",
+    "matched_archetype": "REDIRECT_CHAIN"
+  }
+}

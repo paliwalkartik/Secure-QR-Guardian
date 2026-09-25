@@ -1,0 +1,37 @@
+{
+  "scanner": [
+    "Identify",
+    "Protect"
+  ],
+  "osint": [
+    "Identify",
+    "Detect"
+  ],
+  "risk": [
+    "Detect",
+    "Respond"
+  ],
+  "reasoning": [
+    "Detect",
+    "Respond"
+  ],
+  "blacklist": [
+    "Protect",
+    "Respond"
+  ],
+  "forensics": [
+    "Respond",
+    "Recover"
+  ],
+  "simulator": [
+    "Identify",
+    "Protect"
+  ],
+  "dashboard": [
+    "Detect"
+  ],
+  "compliance": [
+    "Identify",
+    "Recover"
+  ]
+}

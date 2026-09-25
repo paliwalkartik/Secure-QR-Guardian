@@ -1,0 +1,50 @@
+{
+  "id": "scn_002_typosquatting",
+  "name": "Typosquatting Attack",
+  "description": "Domain: 'phonep3.com', distance=1 to phonepe.com, 0 redirects, domain 14 days old",
+  "mock_payload": {
+    "raw_data": "https://phonep3.com/pay?amt=5000",
+    "data_type": "URL"
+  },
+  "mock_osint": {
+    "url_trail": {
+      "hops": [
+        "https://phonep3.com/pay?amt=5000"
+      ],
+      "final_url": "https://phonep3.com/pay?amt=5000",
+      "final_ip": "185.199.108.153"
+    },
+    "domain_forensics": {
+      "creation_date": "2026-04-29",
+      "registrar": "GoDaddy",
+      "country": "IN",
+      "ssl_issued_on": "2026-04-29",
+      "ssl_issuer": "cPanel, Inc.",
+      "ssl_days_valid": 90
+    },
+    "ip_analysis": {
+      "country": "NL",
+      "city": "Amsterdam",
+      "org": "Some Hosting Provider",
+      "asn": "AS1234",
+      "asn_name": "HOSTING-AS",
+      "is_known_bulletproof": false
+    },
+    "typosquat": {
+      "is_typosquat": true,
+      "closest_legit": "phonepe.com",
+      "distance": 1,
+      "match": "phonep3.com"
+    },
+    "vpa": {
+      "claimed_name": "PhonePe Team",
+      "registered_name": "PhonePe",
+      "mismatch": false
+    },
+    "is_blacklisted": false
+  },
+  "expected_verdict": {
+    "threat_level": "HIGH",
+    "matched_archetype": "TYPOSQUATTER"
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "tests/unit/test_osint.py::test_typosquat_detector": true,
+  "tests/unit/test_osint.py::test_vpa_verifier": true
+}

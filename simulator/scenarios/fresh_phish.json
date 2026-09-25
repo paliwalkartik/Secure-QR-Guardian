@@ -1,0 +1,52 @@
+{
+  "id": "scn_001_fresh_phish",
+  "name": "Fresh Phishing Domain",
+  "description": "Domain 3 days old, Let's Encrypt cert, 2 redirects, no typosquat, VPA mismatch=True",
+  "mock_payload": {
+    "raw_data": "https://bit.ly/pay-now-xyz",
+    "data_type": "URL"
+  },
+  "mock_osint": {
+    "url_trail": {
+      "hops": [
+        "https://bit.ly/pay-now-xyz",
+        "https://hop1.tracking-click.com/ref?id=123",
+        "https://evil-fresh.com/pay"
+      ],
+      "final_url": "https://evil-fresh.com/pay",
+      "final_ip": "104.21.55.12"
+    },
+    "domain_forensics": {
+      "creation_date": "2026-05-10",
+      "registrar": "Namecheap Inc.",
+      "country": "US",
+      "ssl_issued_on": "2026-05-10",
+      "ssl_issuer": "Let's Encrypt",
+      "ssl_days_valid": 90
+    },
+    "ip_analysis": {
+      "country": "US",
+      "city": "Ashburn",
+      "org": "Cloudflare Inc.",
+      "asn": "AS13335",
+      "asn_name": "CLOUDFLARENET",
+      "is_known_bulletproof": false
+    },
+    "typosquat": {
+      "is_typosquat": false,
+      "closest_legit": null,
+      "distance": 0,
+      "match": null
+    },
+    "vpa": {
+      "claimed_name": "HDFC Support",
+      "registered_name": "Amit Sharma",
+      "mismatch": true
+    },
+    "is_blacklisted": false
+  },
+  "expected_verdict": {
+    "threat_level": "HIGH",
+    "matched_archetype": "FRESH_PHISH"
+  }
+}

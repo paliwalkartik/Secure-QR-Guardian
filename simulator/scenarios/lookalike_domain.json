@@ -1,0 +1,51 @@
+{
+  "id": "scn_005_lookalike_domain",
+  "name": "Lookalike / Subdomain Pattern",
+  "description": "Domain: 'sbi-secure-login.com', subdomain pattern, domain 30 days old, 1 redirect",
+  "mock_payload": {
+    "raw_data": "https://auth.sbi-secure-login.com/verify",
+    "data_type": "URL"
+  },
+  "mock_osint": {
+    "url_trail": {
+      "hops": [
+        "https://auth.sbi-secure-login.com/verify",
+        "https://auth.sbi-secure-login.com/login"
+      ],
+      "final_url": "https://auth.sbi-secure-login.com/login",
+      "final_ip": "142.250.190.46"
+    },
+    "domain_forensics": {
+      "creation_date": "2026-04-13",
+      "registrar": "Porkbun",
+      "country": "US",
+      "ssl_issued_on": "2026-04-14",
+      "ssl_issuer": "Let's Encrypt",
+      "ssl_days_valid": 90
+    },
+    "ip_analysis": {
+      "country": "US",
+      "city": "New York",
+      "org": "VPS Provider",
+      "asn": "AS396982",
+      "asn_name": "CLOUD-VPS",
+      "is_known_bulletproof": false
+    },
+    "typosquat": {
+      "is_typosquat": false,
+      "closest_legit": null,
+      "distance": 0,
+      "match": null
+    },
+    "vpa": {
+      "claimed_name": "SBI Authorization",
+      "registered_name": "Fraudster Inc",
+      "mismatch": true
+    },
+    "is_blacklisted": false
+  },
+  "expected_verdict": {
+    "threat_level": "CRITICAL",
+    "matched_archetype": "LOOKALIKE_DOMAIN"
+  }
+}

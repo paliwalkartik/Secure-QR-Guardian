@@ -1,0 +1,48 @@
+{
+  "id": "scn_003_upi_mismatch",
+  "name": "VPA Impostor",
+  "description": "VPA: 'sbi.refund@sbi', registered_name: 'Suresh Patel', mismatch=True, domain 5 years old",
+  "mock_payload": {
+    "raw_data": "upi://pay?pa=sbi.refund@sbi&pn=SBI+Refund+Portal&am=1000",
+    "data_type": "UPI"
+  },
+  "mock_osint": {
+    "url_trail": {
+      "hops": [],
+      "final_url": null,
+      "final_ip": null
+    },
+    "domain_forensics": {
+      "creation_date": "2021-01-01",
+      "registrar": "N/A",
+      "country": "IN",
+      "ssl_issued_on": "N/A",
+      "ssl_issuer": "N/A",
+      "ssl_days_valid": 0
+    },
+    "ip_analysis": {
+      "country": null,
+      "city": null,
+      "org": null,
+      "asn": null,
+      "asn_name": null,
+      "is_known_bulletproof": false
+    },
+    "typosquat": {
+      "is_typosquat": false,
+      "closest_legit": null,
+      "distance": 0,
+      "match": null
+    },
+    "vpa": {
+      "claimed_name": "SBI Refund Portal",
+      "registered_name": "Suresh Patel",
+      "mismatch": true
+    },
+    "is_blacklisted": false
+  },
+  "expected_verdict": {
+    "threat_level": "MEDIUM",
+    "matched_archetype": "VPA_IMPOSTOR"
+  }
+}
