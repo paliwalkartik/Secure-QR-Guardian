@@ -88,9 +88,13 @@ def call_llm(
         if not expected_keys.issubset(parsed.keys()):
             logger.warning(
                 "LLM response missing required keys.",
-                extra={"keys_found": list(parsed.keys()), "expected": list(expected_keys)},
+                extra={
+                    "keys_found": list(parsed.keys()),
+                    "expected": list(expected_keys),
+                    "response_type": response_type,
+                },
             )
-            return safe_fallback_verdict()
+            return safe_fallback_critique() if response_type == "critique" else safe_fallback_verdict()
 
         # --- Full hallucination / schema validation -------------------------
         valid, reason = validate_llm_response(parsed, response_type=response_type)
