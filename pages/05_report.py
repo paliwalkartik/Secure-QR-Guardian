@@ -11,9 +11,17 @@ from compliance.nist_mapper import get_nist_summary
 from core.forensics.report_generator import generate_report
 from core.forensics.payload_analyzer import analyze_payload
 from core.reasoning.archetype_classifier import get_archetype_detail
-from core.blacklist.firebase_client import submit_report, get_report_count
+from core.blacklist.consensus_engine import report_domain
+from core.blacklist.firebase_client import get_report_count
 
 st.set_page_config(page_title="Forensic Report", page_icon="📄", layout="wide")
+
+# Generate a stable per-session reporter ID for community reports.
+# This is an anonymous session UUID — never displayed or logged.
+# Without this, all reports are keyed to the same Firestore document and
+# report_count can never exceed 1, making BLACKLIST_MIN_REPORTS unreachable.
+if "anon_reporter_id" not in st.session_state:
+    st.session_state["anon_reporter_id"] = str(uuid.uuid4())
 
 st.title("📄 Forensic Report")
 
@@ -118,8 +126,14 @@ with st.expander("Report Domain to Community", expanded=True):
         
         if st.button("Submit Report"):
             with st.spinner("Submitting securely to Firebase..."):
-                submit_report(domain, reporter_id="anonymous_dashboard_user")
-                count = get_report_count(domain)
-                st.success(f"✅ Domain successfully reported! Total community reports for this domain: **{count}**")
+                result = report_domain(domain, reporter_id=st.session_state["anon_reporter_id"])
+                count = result.get("report_count", get_report_count(domain))
+                if result.get("reported"):
+                    st.success(f"✅ Domain successfully reported! Total community reports for this domain: **{count}**")
+                elif result.get("reason") == "Rate limited":
+                    remaining = result.get("cooldown_seconds", 60)
+                    st.warning(f"⏳ You already reported this domain. Please wait {remaining}s before reporting again.")
+                else:
+                    st.error("Failed to submit report. Please try again later.")
     else:
         st.info("No network domain was extracted from this scan. Only URLs can be reported to the community blacklist.")

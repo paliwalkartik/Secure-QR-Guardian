@@ -41,6 +41,18 @@ def load_scenario(scenario_id: str) -> SimulatorScenario:
     file_path = os.path.join(scenarios_dir, f"{scenario_id}.json")
     
     if not os.path.exists(file_path):
+        # Fallback: find file where internal scenario id matches
+        if os.path.exists(scenarios_dir):
+            for fname in os.listdir(scenarios_dir):
+                if fname.endswith(".json"):
+                    cand_path = os.path.join(scenarios_dir, fname)
+                    try:
+                        with open(cand_path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                        if data.get("id") == scenario_id:
+                            return SimulatorScenario(**data)
+                    except Exception:
+                        continue
         raise FileNotFoundError(f"Scenario file '{scenario_id}.json' not found in {scenarios_dir}")
         
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -90,7 +102,7 @@ def run_scenario(scenario: SimulatorScenario) -> dict:
     
     # 4. Synthesize prompts and execute LLM reasoning
     sys_prompt = build_system_prompt()
-    user_prompt = build_user_prompt(payload, scenario.mock_osint, risk_result)
+    user_prompt = build_user_prompt(scenario.mock_osint, risk_result)
     llm_verdict = call_llm(sys_prompt, user_prompt)
     
     # 5. Mock self-critique (pass-through LLM risk_score as revised confidence for sim)

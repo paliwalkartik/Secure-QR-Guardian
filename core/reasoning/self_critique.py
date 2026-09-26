@@ -6,6 +6,7 @@ Increases transparency and reduces false positives in edge cases.
 import json
 from core.reasoning.llm_engine import call_llm
 from core.reasoning.prompt_builder import build_system_prompt
+from core.reasoning.injection_guard import sanitize_osint_bundle
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -14,12 +15,14 @@ def run_self_critique(first_verdict: dict, osint_bundle: dict) -> dict:
     risk_score = first_verdict.get("risk_score", 50)
     threat_level = first_verdict.get("threat_level", "UNKNOWN")
     
-    # Securely format evidence without raw payloads or URLs
+    # Sanitize OSINT bundle via SEC-1/SEC-3 guard BEFORE building clean_osint.
+    # This prevents injected WHOIS/registrar strings from reaching the second LLM call.
+    sanitized_bundle = sanitize_osint_bundle(osint_bundle)
     clean_osint = {
-        "domain_forensics": osint_bundle.get("domain_forensics", {}),
-        "ip_analysis": osint_bundle.get("ip_analysis", {}),
-        "typosquat_result": osint_bundle.get("typosquat", {}),
-        "vpa_result": osint_bundle.get("vpa", {})
+        "domain_forensics": sanitized_bundle.get("domain_forensics", {}),
+        "ip_analysis": sanitized_bundle.get("ip_analysis", {}),
+        "typosquat_result": sanitized_bundle.get("typosquat", {}),
+        "vpa_result": sanitized_bundle.get("vpa", {})
     }
     
     user_prompt = f"""EVIDENCE:
@@ -35,11 +38,13 @@ Respond ONLY with JSON: {{"critique_summary": "string", "revised_confidence": in
     
     logger.debug("Initiating adversarial self-critique.")
     
-    # Call the updated LLM engine that accepts custom expected keys
+    # Call the updated LLM engine with response_type="critique" so the correct
+    # CritiqueResponseSchema validates the response (not LLMResponseSchema).
     response = call_llm(
-        system_prompt=sys_prompt, 
-        user_prompt=user_prompt, 
-        expected_keys={"critique_summary", "revised_confidence"}
+        system_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        expected_keys={"critique_summary", "revised_confidence"},
+        response_type="critique"
     )
     
     # If the LLM engine falls back or fails validation, it returns the standard fallback
@@ -54,3 +59,8 @@ Respond ONLY with JSON: {{"critique_summary": "string", "revised_confidence": in
         "critique_summary": response["critique_summary"],
         "revised_confidence": int(response["revised_confidence"])
     }
+
+
+# Backward-compatibility alias
+self_critique = run_self_critique
+

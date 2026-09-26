@@ -1,7 +1,9 @@
 """
-LLM response validator. Every response from the LLM passes through here.
-Invalid responses are rejected and replaced with safe_fallback_verdict().
-A hallucination is treated the same as an API failure.
+LLM response validator. Every LLM response passes through here before use.
+Invalid verdict responses → safe_fallback_verdict().
+Invalid critique responses → safe_fallback_critique().
+A hallucination is treated identically to an API failure.
+Does NOT make network calls. Does NOT modify the original response dict.
 """
 
 import json
@@ -63,7 +65,7 @@ VALID_ARCHETYPE_IDS: set[str] = _load_valid_archetype_ids()
 # ---------------------------------------------------------------------------
 
 class LLMResponseSchema(BaseModel):
-    """Strict schema for a single LLM verdict response."""
+    """Strict schema for the main LLM verdict response. Never merge with CritiqueResponseSchema."""
 
     risk_score: int
     threat_level: str
@@ -87,15 +89,40 @@ class LLMResponseSchema(BaseModel):
         return v
 
 
+class CritiqueResponseSchema(BaseModel):
+    """Schema for the adversarial self-critique response — distinct from the
+    main verdict schema. Do not merge these two schemas."""
+
+    critique_summary: str
+    revised_confidence: int
+
+    @field_validator("revised_confidence")
+    @classmethod
+    def confidence_in_range(cls, v: int) -> int:
+        if not (0 <= v <= 100):
+            raise ValueError(f"revised_confidence {v} is outside [0, 100]")
+        return v
+
+    @field_validator("critique_summary")
+    @classmethod
+    def summary_not_empty(cls, v: str) -> str:
+        if len(v) < 5:
+            raise ValueError("critique_summary is too short (< 5 chars)")
+        return v
+
+
 # ---------------------------------------------------------------------------
 # Public functions
 # ---------------------------------------------------------------------------
 
-def validate_llm_response(raw: dict) -> tuple[bool, str]:
+def validate_llm_response(raw: dict, response_type: str = "verdict") -> tuple[bool, str]:
     """
-    Validate a parsed LLM response dict against the canonical schema.
+    Validate a parsed LLM response dict against the schema for the given response_type.
 
-    Checks performed (in order):
+    response_type="critique"  → validates against CritiqueResponseSchema (2 fields)
+    response_type="verdict"   → validates against LLMResponseSchema (4-check path, default)
+
+    Checks for response_type="verdict" (in order):
       1. Pydantic structural + range validation (risk_score 0-100, summary length)
       2. threat_level is a known value
       3. matched_archetype is a known archetype ID or "NONE"
@@ -108,6 +135,18 @@ def validate_llm_response(raw: dict) -> tuple[bool, str]:
     Never raises.
     """
     try:
+        # --- Critique path: separate schema, separate branch ----------------
+        if response_type == "critique":
+            try:
+                CritiqueResponseSchema(**raw)
+                return True, ""
+            except ValidationError as exc:
+                reason = f"Critique schema validation failed: {exc.errors()[0]['msg']}"
+                logger.debug("Critique response schema invalid", extra={"reason": reason})
+                return False, reason
+            except Exception as exc:
+                return False, f"Unexpected error validating critique response: {exc}"
+        # --- Verdict path continues below -----------------------------------
         # --- Check 1: Pydantic structural validation -------------------------
         try:
             validated = LLMResponseSchema(**raw)
@@ -191,5 +230,21 @@ def safe_fallback_verdict() -> dict:
         "threat_level": "MEDIUM",
         "reasoning_summary": "AI verdict unavailable. Risk based on OSINT signals only.",
         "matched_archetype": "NONE",
+        "llm_fallback": True,
+    }
+
+
+def safe_fallback_critique() -> dict:
+    """
+    Neutral critique fallback used when the critique LLM response is invalid,
+    hallucinated, or unavailable. Mirrors safe_fallback_verdict()'s contract
+    for the critique response shape.
+
+    The 'llm_fallback: True' key signals to all callers that this is a
+    synthetic critique, not a real LLM judgment.
+    """
+    return {
+        "critique_summary": "Critique unavailable",
+        "revised_confidence": 50,
         "llm_fallback": True,
     }

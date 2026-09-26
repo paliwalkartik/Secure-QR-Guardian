@@ -45,8 +45,8 @@ st.sidebar.markdown("Use the links below to navigate through the security pipeli
 
 pages = [
     ("pages/01_scanner.py", "1. QR Scanner", "📷"),
-    ("pages/02_osint.py", "2. OSINT Traceback", "🔍"),
-    ("pages/03_reasoning.py", "3. Reasoning Engine", "🧠"),
+    ("pages/02_forensics.py", "2. OSINT & Forensics", "🔍"),
+    ("pages/03_simulator.py", "3. Threat Simulator", "🧪"),
     ("pages/04_dashboard.py", "4. Threat Dashboard", "📊"),
     ("pages/05_report.py", "5. Forensic Report", "📄")
 ]

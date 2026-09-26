@@ -95,4 +95,4 @@ if image_bytes is not None:
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.button("View Full Forensics →", use_container_width=True):
-                st.switch_page("pages/02_osint.py")
+                st.switch_page("pages/02_forensics.py")

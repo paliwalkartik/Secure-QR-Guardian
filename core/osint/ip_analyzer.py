@@ -8,13 +8,16 @@ import requests
 from config.settings import settings
 from utils.cache import cache
 from utils.logger import get_logger
+from utils.validators import is_valid_ip
 from core.reasoning.injection_guard import sanitize_osint_field
 
 logger = get_logger(__name__)
 
 def _get_ip_api_data(ip: str) -> dict:
     """Helper to fetch and cache raw ip-api.com response to avoid double-calling."""
-    if not ip:
+    if not ip or not is_valid_ip(ip):
+        if ip:
+            logger.warning("Rejected invalid or private IP before ip-api.com call", extra={"ip": ip})
         return {}
         
     cache_key = f"ip_geo:{ip}"

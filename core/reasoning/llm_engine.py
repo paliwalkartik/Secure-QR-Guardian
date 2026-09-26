@@ -1,13 +1,18 @@
 """
-LLM engine. Calls DeepSeek-R1 via Groq API.
-Returns parsed dict. Never raises. Falls back to neutral verdict on any failure.
+LLM engine. Calls Groq API (llama-3.3-70b-versatile).
+Returns parsed dict. Never raises. Falls back to neutral verdict or neutral critique
+on any failure, depending on response_type. Does NOT log raw API keys.
 """
 
 import json
 from groq import Groq
 from config.settings import settings
 from utils.logger import get_logger
-from core.reasoning.response_validator import validate_llm_response, safe_fallback_verdict
+from core.reasoning.response_validator import (
+    validate_llm_response,
+    safe_fallback_verdict,
+    safe_fallback_critique,
+)
 
 logger = get_logger(__name__)
 
@@ -25,7 +30,19 @@ def _extract_json_from_text(text: str) -> str:
         
     return text
 
-def call_llm(system_prompt: str, user_prompt: str, expected_keys: set = None) -> dict:
+def call_llm(
+    system_prompt: str,
+    user_prompt: str,
+    expected_keys: set = None,
+    response_type: str = "verdict",
+) -> dict:
+    """Call the Groq LLM and return a validated, parsed response dict.
+
+    response_type="verdict"  — validated against LLMResponseSchema; fallback: safe_fallback_verdict()
+    response_type="critique" — validated against CritiqueResponseSchema; fallback: safe_fallback_critique()
+
+    Never raises. All API and parsing failures return the appropriate fallback.
+    """
     if expected_keys is None:
         expected_keys = {"risk_score", "threat_level", "reasoning_summary", "matched_archetype"}
         
@@ -76,17 +93,18 @@ def call_llm(system_prompt: str, user_prompt: str, expected_keys: set = None) ->
             return safe_fallback_verdict()
 
         # --- Full hallucination / schema validation -------------------------
-        valid, reason = validate_llm_response(parsed)
+        valid, reason = validate_llm_response(parsed, response_type=response_type)
         if not valid:
             logger.warning(
-                "Hallucinated LLM response detected; using safe fallback verdict.",
+                "Hallucinated LLM response detected; using safe fallback.",
                 extra={
                     "hallucination_detected": True,
                     "reason": reason,
+                    "response_type": response_type,
                     "raw_response": str(parsed)[:200],
                 },
             )
-            return safe_fallback_verdict()
+            return safe_fallback_critique() if response_type == "critique" else safe_fallback_verdict()
 
         return parsed
         

@@ -17,6 +17,7 @@ from firebase_admin import credentials, firestore
 
 from config.settings import settings
 from utils.logger import get_logger
+from core.blacklist.privacy_layer import add_timestamp_noise
 
 logger = get_logger(__name__)
 
@@ -188,13 +189,22 @@ def check_blacklist(domain: str) -> bool:
 def submit_report(domain: str, reporter_id: str = "anonymous") -> None:
     """
     Submit a community report for a malicious domain.
+
+    Each reporter_id maps to a unique Firestore document under reporters/.
+    Using the same reporter_id for every call (e.g. 'anonymous') means all
+    reports overwrite each other — report_count will never exceed 1.
+    Callers MUST pass a stable per-session identifier. See FIX-3.
+
+    Timestamp is noised via add_timestamp_noise() to prevent timing correlation
+    attacks. Raw UTC timestamp is never written to Firebase.
     """
     if db is None:
         return
 
     try:
         domain_hash = _hash_domain(domain)
-        now_iso     = datetime.now(timezone.utc).isoformat()
+        raw_now_iso = datetime.now(timezone.utc).isoformat()
+        noised_iso  = add_timestamp_noise(raw_now_iso)
 
         doc_ref = (
             db.collection("reports")
@@ -204,7 +214,7 @@ def submit_report(domain: str, reporter_id: str = "anonymous") -> None:
         )
 
         doc_ref.set({
-            "timestamp": now_iso,
+            "timestamp": noised_iso,
             "domain":    domain.lower().strip(),
         })
     except Exception as exc:

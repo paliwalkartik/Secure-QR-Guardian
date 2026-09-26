@@ -3,28 +3,28 @@ streamlit==1.33.0
 plotly==5.20.0
 
 # QR
-opencv-python==4.9.0.80
+opencv-python==5.0.0.93
 pyzbar==0.1.9
-pydantic==2.7.0
+pydantic==2.13.5
 
 # OSINT
 python-whois==0.8.0
-requests==2.31.0
-python-Levenshtein==0.25.0
-firebase-admin==6.5.0
+requests==2.34.2
+python-Levenshtein==0.27.5
+firebase-admin==7.7.0
 
 # ML
-scikit-learn==1.4.2
+scikit-learn==1.9.1
 numpy==1.26.4
 
 # Forensics
-fpdf2==2.7.9
+fpdf2==2.8.8
 playwright==1.43.0
 networkx==3.3
 matplotlib==3.8.4
 
 # LLM
-groq==0.5.0
+groq==1.7.0
 
 # API
 fastapi==0.111.0

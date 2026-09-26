@@ -13,26 +13,29 @@ logger = get_logger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-INJECTION_TRIGGERS: list[str] = [
-    "ignore previous",
-    "ignore all",
-    "disregard",
-    "forget instructions",
-    "new instruction",
-    "system:",
-    "assistant:",
-    "you are now",
-    "override",
-    "jailbreak",
-    "act as",
-    "pretend",
-    "simulate",
-    "your new role",
-    "do not flag",
-    "mark as safe",
-    "output 0",
-    "risk_score: 0",
+# Full list — used only for raw QR PAYLOAD text, which is genuinely adversarial
+# input with no legitimate-business-name false-positive risk.
+PAYLOAD_INJECTION_TRIGGERS: list[str] = [
+    "ignore previous", "ignore all", "disregard", "forget instructions",
+    "new instruction", "system:", "assistant:", "you are now", "override",
+    "jailbreak", "act as", "pretend", "simulate", "your new role",
+    "do not flag", "mark as safe", "output 0", "risk_score: 0",
 ]
+
+# Reduced list — used for OSINT metadata fields (registrar names, ASN org names,
+# etc.) which are legitimate-but-externally-supplied strings. Only multi-word
+# phrases with essentially zero legitimate-business-name overlap are kept here,
+# to avoid redacting real evidence.
+OSINT_INJECTION_TRIGGERS: list[str] = [
+    "ignore previous", "ignore all", "forget instructions", "new instruction",
+    "system:", "assistant:", "you are now", "jailbreak", "your new role",
+    "do not flag", "mark as safe", "output 0", "risk_score: 0",
+]
+
+# Backward-compat alias — existing imports of INJECTION_TRIGGERS elsewhere
+# (e.g. core/osint/url_tracer.py's detect_injection_in_url) keep working
+# unchanged, using the full/stricter payload list.
+INJECTION_TRIGGERS = PAYLOAD_INJECTION_TRIGGERS
 
 OSINT_MAX_FIELD_LENGTH: int = 120
 
@@ -98,7 +101,7 @@ def sanitize_osint_field(value: str, field_name: str) -> str:
         truncated = value[:OSINT_MAX_FIELD_LENGTH]
         lowered = truncated.lower()
 
-        for trigger in INJECTION_TRIGGERS:
+        for trigger in OSINT_INJECTION_TRIGGERS:
             if trigger in lowered:
                 logger.warning(
                     "Prompt injection detected in OSINT field",

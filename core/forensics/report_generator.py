@@ -11,6 +11,35 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _pdf_safe(value) -> str:
+    """
+    Convert any value to a string that Helvetica (Latin-1 only) can render.
+
+    Non-Latin-1 characters are replaced with the closest ASCII equivalent
+    where possible, or '?' otherwise. Common LLM-generated Unicode characters
+    (em-dashes, smart quotes, ellipses) are explicitly mapped before the
+    catch-all encode/decode to preserve readability.
+
+    Returns 'N/A' for None and empty/whitespace-only strings.
+    Never raises.
+    """
+    if value is None or str(value).strip() == "":
+        return "N/A"
+    s = str(value)
+    # Common LLM-generated Unicode → ASCII replacements before the fallback replace
+    replacements = {
+        "\u2014": "--",   # em-dash
+        "\u2013": "-",    # en-dash
+        "\u2018": "'", "\u2019": "'",  # smart single quotes
+        "\u201c": '"', "\u201d": '"',  # smart double quotes
+        "\u2026": "...",  # ellipsis
+    }
+    for orig, repl in replacements.items():
+        s = s.replace(orig, repl)
+    # Catch-all: anything still outside Latin-1 becomes '?' rather than crashing
+    return s.encode("latin-1", errors="replace").decode("latin-1")
+
+
 class ForensicPDF(FPDF):
     def __init__(self, timestamp: str):
         super().__init__()
@@ -72,7 +101,7 @@ def generate_report(all_results: dict) -> bytes:
             pdf.set_font("helvetica", "B", 10)
             pdf.cell(50, 8, f"{key}:", new_x="RIGHT")
             pdf.set_font("helvetica", "", 10)
-            val_str = str(value) if value is not None and str(value).strip() != "" else "N/A"
+            val_str = _pdf_safe(value)
             pdf.multi_cell(0, 8, val_str, new_x="LMARGIN", new_y="NEXT")
 
         # 2. Section 1 — Case Summary
@@ -135,8 +164,8 @@ def generate_report(all_results: dict) -> bytes:
         hex_dump = analysis.get("hex_dump", "")
         # Truncate to exactly first two lines (32 bytes)
         hex_lines = hex_dump.splitlines()[:2] if hex_dump else ["N/A"]
-        truncated_hex = "\n".join(hex_lines)
-        
+        truncated_hex = _pdf_safe("\n".join(hex_lines))
+
         pdf.set_font("courier", "", 9)
         pdf.multi_cell(0, 5, truncated_hex, border=1, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(5)
@@ -144,7 +173,7 @@ def generate_report(all_results: dict) -> bytes:
         # 9. Section 8 — NIST Tags
         add_section_header("8. NIST Tags")
         pdf.set_font("helvetica", "", 10)
-        tags_str = ", ".join(nist_tags) if nist_tags else "N/A"
+        tags_str = _pdf_safe(", ".join(nist_tags) if nist_tags else "N/A")
         pdf.multi_cell(0, 8, tags_str, new_x="LMARGIN", new_y="NEXT")
         
         # Output directly to bytes (dest='S' works, but new fpdf2 returns bytearray by default)

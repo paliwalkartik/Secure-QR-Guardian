@@ -14,6 +14,7 @@ from urllib.parse import urljoin, urlparse, unquote_plus
 
 from utils.cache import cache
 from utils.logger import get_logger
+from utils.validators import is_safe_host_to_fetch
 from core.reasoning.injection_guard import INJECTION_TRIGGERS
 
 logger = get_logger(__name__)
@@ -72,6 +73,24 @@ def _follow_redirects(url: str, user_agent: str) -> dict:
 
     try:
         for _ in range(_MAX_HOPS):
+            # ── SSRF guard: validate scheme and host on EVERY hop ──────────────
+            parsed_check = urlparse(current_url)
+            if parsed_check.scheme not in ("http", "https"):
+                logger.warning(
+                    "Blocked non-http(s) scheme during redirect trace",
+                    extra={"scheme": parsed_check.scheme, "url": current_url[:120]},
+                )
+                return {"hops": hops, "final_url": "blocked_invalid_scheme", "final_ip": ""}
+
+            hostname_check = parsed_check.hostname
+            if not hostname_check or not is_safe_host_to_fetch(hostname_check):
+                logger.warning(
+                    "Blocked SSRF attempt — private/reserved/invalid host",
+                    extra={"host": hostname_check, "url": current_url[:120]},
+                )
+                return {"hops": hops, "final_url": "blocked_private_ip", "final_ip": ""}
+            # ──────────────────────────────────────────────────────────────────
+
             response = requests.get(
                 current_url,
                 allow_redirects=False,
@@ -188,3 +207,8 @@ def get_url_trail(url: str) -> dict:
             "alternate_destinations": [],
             "agent_results": {"desktop": url, "mobile": "timeout", "bot": "timeout"},
         }
+
+
+# Alias for backward compatibility / testing
+trace_url = get_url_trail
+

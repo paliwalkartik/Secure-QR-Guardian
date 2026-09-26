@@ -19,6 +19,7 @@ from core.reasoning.llm_engine import call_llm
 from core.reasoning.self_critique import run_self_critique
 from core.reasoning.confidence import calculate_final_confidence
 from compliance.nist_mapper import annotate_result
+from utils.validators import is_valid_url
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -48,7 +49,7 @@ def run_pipeline(image_bytes: bytes, source: str = "camera") -> dict:
             vpa_id = raw_data
         
         # b. OSINT
-        url_trail = get_url_trail(raw_data) if "://" in raw_data else {}
+        url_trail = get_url_trail(raw_data) if is_valid_url(raw_data) else {}
         
         # If url_tracer found a final domain/IP, we should analyze that
         if url_trail.get("final_url"):

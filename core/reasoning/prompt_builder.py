@@ -1,6 +1,8 @@
 """
-Prompt builder for DeepSeek-R1. Builds system and user prompts from data.
-Never include raw QR payload or user PII in prompts.
+Prompt builder for Groq LLM (llama-3.3-70b-versatile). Builds system and user prompts from data.
+Never include raw QR payload, raw URLs, or user PII in prompts.
+Boolean signals from url_trail (cloaking_detected, injection_in_url) are safe to include
+because they are derived booleans, not raw URL strings — per SEC-1 design intent.
 """
 
 import os
@@ -51,14 +53,23 @@ def build_user_prompt(osint_bundle: dict, risk_result: dict) -> str:
     # Sanitize all OSINT data before it touches any prompt string
     clean_bundle = sanitize_osint_bundle(osint_bundle)
 
-    # Build clean evidence block safely omitting raw_data and full URLs to prevent prompt injection
+    # Extract URL trail booleans before building evidence.
+    # ONLY boolean derivatives are included — never "hops", "final_url",
+    # "alternate_destinations", or "agent_results". Those remain excluded
+    # per the original SEC-1 design: booleans yes, raw URLs no.
+    url_trail = clean_bundle.get("url_trail", {})
+
+    # Build clean evidence block safely omitting raw_data and full URLs
     evidence = {
-        "domain_forensics": clean_bundle.get("domain_forensics", {}),
-        "ip_analysis": clean_bundle.get("ip_analysis", {}),
-        "typosquat_result": clean_bundle.get("typosquat", {}),
-        "vpa_result": clean_bundle.get("vpa", {}),
-        "risk_score": risk_result.get("risk_score", 0),
-        "threat_level": risk_result.get("threat_level", "SAFE")
+        "domain_forensics":  clean_bundle.get("domain_forensics", {}),
+        "ip_analysis":       clean_bundle.get("ip_analysis", {}),
+        "typosquat_result":  clean_bundle.get("typosquat", {}),
+        "vpa_result":        clean_bundle.get("vpa", {}),
+        # Booleans only — the actual URL/hops are still deliberately excluded
+        "cloaking_detected": bool(url_trail.get("cloaking_detected", False)),
+        "injection_in_url":  bool(url_trail.get("injection_in_url", False)),
+        "risk_score":        risk_result.get("risk_score", 0),
+        "threat_level":      risk_result.get("threat_level", "SAFE"),
     }
     
     evidence_json = json.dumps(evidence, indent=2)

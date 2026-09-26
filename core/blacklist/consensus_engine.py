@@ -1,8 +1,9 @@
 """
 Consensus engine. A domain is only blacklisted after BLACKLIST_MIN_REPORTS unique reports.
 Prevents single-user poisoning of the community blacklist.
-Rate limiting: the same domain cannot be reported more than once per 60 seconds
-from the same in-process session, blocking rapid-fire false-report flooding.
+Rate limiting: the same (domain, reporter) pair cannot be reported more than once per
+60 seconds. Distinct reporters of the same domain are never blocked by each other's
+cooldowns — the key is (domain_hash:reporter_id), not domain_hash alone.
 Does NOT make direct network calls — delegates to firebase_client exclusively.
 """
 
@@ -18,7 +19,9 @@ import time
 
 logger = get_logger(__name__)
 
-# Per-session cooldown registry: domain_hash -> last_report_timestamp (float).
+# Per-(domain, reporter) cooldown registry: cooldown_key -> last_report_timestamp (float).
+# Key format: "{domain_hash}:{reporter_id}" — this ensures one user's cooldown never
+# blocks a different user from reporting the same domain concurrently.
 # In-memory only — resets on app restart. Not a substitute for server-side
 # deduplication, but prevents trivial rapid-fire abuse within one session.
 _REPORT_COOLDOWN_SECONDS: int = 60
@@ -62,28 +65,35 @@ def check_and_update(domain: str) -> bool:
         return False
 
 
-def report_domain(domain: str) -> dict:
+def report_domain(domain: str, reporter_id: str) -> dict:
     """
     Record a community fraud report for a domain and update blacklist status.
 
-    Rate limited: if the same domain is reported again within
-    _REPORT_COOLDOWN_SECONDS (60 s) from the same session, returns early with
-    reported=False to prevent rapid-fire false-report flooding.
+    reporter_id MUST be a stable per-user identifier (e.g. a session-scoped UUID).
+    Passing the same literal string for every caller (e.g. 'anonymous') defeats
+    the entire consensus mechanism — see FIX-3 for the incident this caused.
+
+    Rate limited per (domain, reporter) pair: the SAME reporter cannot report the
+    SAME domain again within 60 seconds. Different reporters are never blocked
+    by each other's cooldowns.
     Never raises.
     """
     import hashlib
     domain_hash = hashlib.sha256(domain.lower().strip().encode()).hexdigest()
 
-    # ── Rate limiting (per-session, in-memory) ────────────────────────────
+    # Cooldown is keyed by (domain, reporter) — not domain alone —
+    # so it no longer blocks other users' concurrent reports of the same domain.
+    cooldown_key = f"{domain_hash}:{reporter_id}"
+
     now = time.time()
-    last_reported = _REPORT_COOLDOWN.get(domain_hash, 0.0)
+    last_reported = _REPORT_COOLDOWN.get(cooldown_key, 0.0)
     elapsed = now - last_reported
 
     if elapsed < _REPORT_COOLDOWN_SECONDS:
         remaining = int(_REPORT_COOLDOWN_SECONDS - elapsed)
         logger.warning(
             "report_domain rate-limited",
-            extra={"domain_hash": domain_hash[:12], "cooldown_remaining_s": remaining},
+            extra={"domain_hash": domain_hash[:12], "reporter_id": reporter_id[:12], "cooldown_remaining_s": remaining},
         )
         return {
             "reported":         False,
@@ -91,10 +101,9 @@ def report_domain(domain: str) -> dict:
             "cooldown_seconds": _REPORT_COOLDOWN_SECONDS,
         }
 
-    # ── Record and update ─────────────────────────────────────────────────
     try:
-        submit_report(domain)
-        _REPORT_COOLDOWN[domain_hash] = now       # stamp after successful submission
+        submit_report(domain, reporter_id=reporter_id)
+        _REPORT_COOLDOWN[cooldown_key] = now
         is_blacklisted = check_and_update(domain)
         count = get_report_count(domain)
 

@@ -15,7 +15,7 @@ class Settings:
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     FIREBASE_CREDENTIALS_PATH: str = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
     IP_API_KEY: str = os.getenv("IP_API_KEY", "")
-    GROQ_MODEL_NAME: str = os.getenv("GROQ_MODEL_NAME", "deepseek-r1-distill-llama-70b")
+    GROQ_MODEL_NAME: str = os.getenv("GROQ_MODEL_NAME", "llama-3.3-70b-versatile")
     BLACKLIST_MIN_REPORTS: int = int(os.getenv("BLACKLIST_MIN_REPORTS", "3"))
     BLACKLIST_TTL_DAYS: int = int(os.getenv("BLACKLIST_TTL_DAYS", "90"))
     TYPOSQUAT_MAX_DISTANCE: int = int(os.getenv("TYPOSQUAT_MAX_DISTANCE", "2"))

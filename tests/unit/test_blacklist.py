@@ -68,7 +68,7 @@ def test_report_domain():
         mock_settings.BLACKLIST_MIN_REPORTS = 2
         
         # Report 1
-        res1 = report_domain("test.com")
+        res1 = report_domain("test.com", reporter_id="reporter_1")
         assert res1["report_count"] == 1
         assert res1["now_blacklisted"] is False
         
@@ -76,6 +76,6 @@ def test_report_domain():
         _REPORT_COOLDOWN.clear()
         
         # Report 2 (triggers consensus)
-        res2 = report_domain("test.com")
+        res2 = report_domain("test.com", reporter_id="reporter_2")
         assert res2["report_count"] == 2
         assert res2["now_blacklisted"] is True
