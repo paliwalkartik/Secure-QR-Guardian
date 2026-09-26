@@ -54,6 +54,30 @@ MOCK_VPA_REGISTRY = {
 }
 
 
+def _matches_known_provider(provider: str, known_list: list[str]) -> bool:
+    """
+    Exact-match or dot-suffix-match a VPA provider string against a known list.
+
+    Never uses substring containment ('agg in provider') — that allowed strings
+    like 'fakeatomcorp' to match 'atom' and 'notarazorpayclone' to match
+    'razorpay'. A provider is considered a match only if it IS one of the known
+    strings exactly, or ends with '.' + known (covering legitimate bank-issued
+    sub-provider handles like 'sub.razorpay' without matching unrelated strings
+    that merely happen to contain the substring).
+
+    Never raises.
+    """
+    try:
+        provider = provider.lower().strip()
+        for known in known_list:
+            known = known.lower().strip()
+            if provider == known or provider.endswith("." + known):
+                return True
+        return False
+    except Exception:
+        return False
+
+
 def verify_vpa(vpa: str) -> dict:
     """
     Verify a UPI VPA against the mock registry and classify the routing context.
@@ -86,8 +110,8 @@ def verify_vpa(vpa: str) -> dict:
     claimed_name = localpart.replace(".", " ").replace("-", " ").replace("_", " ").title()
 
     # ── Routing classification ─────────────────────────────────────────────
-    is_aggregator_routed = any(agg in provider for agg in KNOWN_AGGREGATORS)
-    is_personal_provider = any(pat in provider for pat in INDIVIDUAL_PROVIDER_PATTERNS)
+    is_aggregator_routed = _matches_known_provider(provider, KNOWN_AGGREGATORS)
+    is_personal_provider = _matches_known_provider(provider, INDIVIDUAL_PROVIDER_PATTERNS)
 
     # ── Registry lookup ───────────────────────────────────────────────────
     if vpa_lower in MOCK_VPA_REGISTRY:

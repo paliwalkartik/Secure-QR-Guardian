@@ -49,41 +49,51 @@ class RiskClassifier:
 
     def predict(self, features: np.ndarray) -> dict:
         if self.model is None:
-            return formula.calculate_risk(features)
-            
-        try:
-            # Reshape features to 2D array for sklearn predict_proba
-            proba = self.model.predict_proba([features])[0]
-            
-            # Probability of fraud/risk is the positive class (index 1)
-            risk_score = int(proba[1] * 100)
-            
-            # Clamp just to be safe
-            risk_score = max(0, min(100, risk_score))
-            
-            confidence_interval = self._calculate_ci(proba)
-            
-            if risk_score <= 25:
-                threat_level = "SAFE"
-            elif risk_score <= 50:
-                threat_level = "LOW"
-            elif risk_score <= 70:
-                threat_level = "MEDIUM"
-            elif risk_score <= 85:
-                threat_level = "HIGH"
-            else:
-                threat_level = "CRITICAL"
-                
-            return {
-                "risk_score": risk_score,
-                "confidence_interval": confidence_interval,
-                "threat_level": threat_level,
-                "score_source": "classifier"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error during ML prediction: {e}. Falling back to formula.")
-            return formula.calculate_risk(features)
+            result = formula.calculate_risk(features)
+        else:
+            try:
+                proba = self.model.predict_proba([features])[0]
+
+                risk_score = int(proba[1] * 100)
+                risk_score = max(0, min(100, risk_score))
+
+                confidence_interval = self._calculate_ci(proba)
+
+                if risk_score <= 25:
+                    threat_level = "SAFE"
+                elif risk_score <= 50:
+                    threat_level = "LOW"
+                elif risk_score <= 70:
+                    threat_level = "MEDIUM"
+                elif risk_score <= 85:
+                    threat_level = "HIGH"
+                else:
+                    threat_level = "CRITICAL"
+
+                result = {
+                    "risk_score": risk_score,
+                    "confidence_interval": confidence_interval,
+                    "threat_level": threat_level,
+                    "score_source": "classifier",
+                }
+            except Exception as e:
+                logger.error(f"Error during ML prediction: {e}. Falling back to formula.")
+                result = formula.calculate_risk(features)
+
+        # ── Injection-in-URL floor override — applies regardless of which
+        # scoring path produced `result`. An embedded prompt-injection payload
+        # in a URL is near-unambiguous evidence of malicious intent; do not
+        # rely solely on the ML model having learned this from synthetic
+        # training data.
+        if len(features) > 10 and features[10] == 1.0:
+            if result.get("risk_score", 0) < 90:
+                result["risk_score"] = 90
+                result["threat_level"] = "CRITICAL"
+            result["injection_override_applied"] = True
+        else:
+            result.setdefault("injection_override_applied", False)
+
+        return result
 
 # Export a single module-level instance
 risk_classifier = RiskClassifier()

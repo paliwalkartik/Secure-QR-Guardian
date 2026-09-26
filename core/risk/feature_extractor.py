@@ -1,5 +1,5 @@
 """
-Converts osint_bundle dict into a fixed-length numpy feature vector of length 10.
+Converts osint_bundle dict into a fixed-length numpy feature vector of length 11.
 Feature order is fixed. Do not change order without retraining the classifier.
 Does NOT perform any network calls or OSINT lookups — purely a transformation layer.
 """
@@ -21,6 +21,7 @@ FEATURE_NAMES = [
     "typosquat_distance",        # 7
     "cloaking_detected",         # 8
     "punycode_detected",         # 9
+    "injection_in_url",          # 10
 ]
 
 def _calculate_days_since(iso_date_str: str) -> int:
@@ -94,7 +95,11 @@ def extract_features(osint_bundle: dict) -> np.ndarray:
     # 9: punycode_detected — set by typosquat_detector when any xn-- label is found
     punycode_detected = 1.0 if typosquat.get("punycode_detected") else 0.0
 
-    # Assemble feature vector in strict index order (length must stay 10)
+    # 10: injection_in_url — set by url_tracer when the final URL's path/query
+    # contains a prompt-injection trigger phrase. Near-unambiguous attack signal.
+    injection_in_url = 1.0 if url_trail.get("injection_in_url") else 0.0
+
+    # Assemble feature vector in strict index order (length must stay 11)
     features = [
         domain_age_days,
         redirect_count,
@@ -106,6 +111,7 @@ def extract_features(osint_bundle: dict) -> np.ndarray:
         typosquat_distance,
         cloaking_detected,
         punycode_detected,
+        injection_in_url,
     ]
 
     return np.array(features, dtype=float)

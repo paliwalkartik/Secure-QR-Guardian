@@ -58,6 +58,7 @@ def _calculate_dynamic_weights(features: np.ndarray) -> tuple:
 # signal penalties that raise the score even when mismatch/age/blacklist are low.
 CLOAKING_BONUS: float = 0.35
 PUNYCODE_BONUS: float = 0.30
+INJECTION_FLOOR: int = 90  # minimum risk_score when injection_in_url is detected
 
 
 def calculate_risk(features: np.ndarray) -> dict:
@@ -71,10 +72,10 @@ def calculate_risk(features: np.ndarray) -> dict:
     Falls back to a zero-risk safe default on invalid input.
     Never raises.
     """
-    if len(features) < 10:
+    if len(features) < 11:
         logger.error(
             "Invalid feature array length passed to formula.",
-            extra={"expected": 10, "got": len(features)},
+            extra={"expected": 11, "got": len(features)},
         )
         return {
             "risk_score": 0,
@@ -85,6 +86,7 @@ def calculate_risk(features: np.ndarray) -> dict:
             "weight_reason": "default (invalid input length)",
             "cloaking_bonus_applied": False,
             "punycode_bonus_applied": False,
+            "injection_override_applied": False,
         }
 
     domain_age_days   = features[0]
@@ -93,6 +95,7 @@ def calculate_risk(features: np.ndarray) -> dict:
     is_blacklisted    = features[6]
     cloaking_detected = features[8]
     punycode_detected = features[9]
+    injection_in_url  = features[10]
 
     danger_age = getattr(settings, "DOMAIN_DANGER_AGE_DAYS", 7)
     safe_age   = getattr(settings, "DOMAIN_SAFE_AGE_DAYS", 730)
@@ -145,6 +148,11 @@ def calculate_risk(features: np.ndarray) -> dict:
     risk_score = int(raw_score * 100)
     risk_score = max(0, min(100, risk_score))
 
+    injection_override_applied = False
+    if injection_in_url == 1.0 and risk_score < INJECTION_FLOOR:
+        risk_score = INJECTION_FLOOR
+        injection_override_applied = True
+
     # 6. Threat level bands
     if risk_score <= 25:
         threat_level = "SAFE"
@@ -158,16 +166,17 @@ def calculate_risk(features: np.ndarray) -> dict:
         threat_level = "CRITICAL"
 
     return {
-        "risk_score":             risk_score,
-        "threat_level":           threat_level,
-        "score_source":           "formula",
-        "confidence_interval":    15,
+        "risk_score":                risk_score,
+        "threat_level":              threat_level,
+        "score_source":              "formula",
+        "confidence_interval":       15,
         "weights_used": {
             "mismatch":   w_mismatch,
             "domain_age": w_domain_age,
             "blacklist":  w_blacklist,
         },
-        "weight_reason":          weight_reason,
-        "cloaking_bonus_applied": cloaking_term > 0,
-        "punycode_bonus_applied": punycode_term > 0,
+        "weight_reason":             weight_reason,
+        "cloaking_bonus_applied":    cloaking_term > 0,
+        "punycode_bonus_applied":    punycode_term > 0,
+        "injection_override_applied": injection_override_applied,
     }

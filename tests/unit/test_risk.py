@@ -21,7 +21,7 @@ def dummy_osint():
 def test_extract_features_valid(dummy_osint):
     """Test feature extractor maps dict OSINT bundle into strict numeric array."""
     features = extract_features(dummy_osint)
-    assert len(features) == 10
+    assert len(features) == 11
     assert features[1] == 2  # redirects
     assert features[2] == 1  # typosquat
     assert features[3] == 1  # bulletproof
@@ -29,12 +29,12 @@ def test_extract_features_valid(dummy_osint):
 def test_extract_features_empty():
     """Test feature extractor handles empty OSINT gracefully."""
     features = extract_features({})
-    assert len(features) == 10
+    assert len(features) == 11
     assert np.all(features >= 0)
 
 def test_calculate_risk_formula():
     """Test deterministic fallback formula assigns risk correctly."""
-    features = np.array([5, 1, 0, 0, 90, 0, 0, 0, 0, 0], dtype=float)
+    features = np.array([5, 1, 0, 0, 90, 0, 0, 0, 0, 0, 0], dtype=float)
     res = calculate_risk(features)
     assert "risk_score" in res
     assert "threat_level" in res
@@ -43,7 +43,7 @@ def test_calculate_risk_formula():
 def test_calculate_risk_high_threat():
     """Test formula detects extreme fraud features (blacklisted, bulletproof)."""
     # 6: is_blacklisted = 1, 3: bulletproof = 1
-    features = np.array([1, 4, 1, 1, 10, 1, 1, 2, 0, 0], dtype=float)
+    features = np.array([1, 4, 1, 1, 10, 1, 1, 2, 0, 0, 0], dtype=float)
     res = calculate_risk(features)
     assert res["risk_score"] > 80
     assert res["threat_level"] in ["HIGH", "CRITICAL"]
@@ -54,6 +54,6 @@ def test_classifier_fallback():
     # Force no model
     classifier.model = None
     
-    features = np.array([5, 1, 0, 0, 90, 0, 0, 0, 0, 0], dtype=float)
+    features = np.array([5, 1, 0, 0, 90, 0, 0, 0, 0, 0, 0], dtype=float)
     res = classifier.predict(features)
     assert res["score_source"] == "formula"
